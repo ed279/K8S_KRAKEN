@@ -1,0 +1,11 @@
+[Unit]
+Description=Kraken Bot v12 Live Loss Analysis Service
+PartOf=kraken-bot-v12-loss-analysis.timer
+
+[Service]
+Type=oneshot
+User=claude
+ExecStart=/usr/bin/python3 -c "from v12.live_loss_analyzer import LiveLossAnalyzer; LiveLossAnalyzer().run_loss_analysis()"
+WorkingDirectory=/home/claude/kraken-bot
+StandardOutput=journal
+StandardError=journal

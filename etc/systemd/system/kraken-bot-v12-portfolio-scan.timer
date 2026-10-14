@@ -1,0 +1,10 @@
+[Unit]
+Description=Kraken Bot v12 Portfolio Expansion Scan
+Requires=kraken-bot-v12-portfolio-scan.service
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=6h
+
+[Install]
+WantedBy=timers.target

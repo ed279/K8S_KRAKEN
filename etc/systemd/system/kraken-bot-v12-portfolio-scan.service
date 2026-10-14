@@ -1,0 +1,11 @@
+[Unit]
+Description=Kraken Bot v12 Portfolio Expansion Scan Service
+PartOf=kraken-bot-v12-portfolio-scan.timer
+
+[Service]
+Type=oneshot
+User=claude
+ExecStart=/usr/bin/python3 -c "from v12.portfolio_expansion_engine import PortfolioExpansionEngine; PortfolioExpansionEngine(tier='shadow').run_expansion_scan()"
+WorkingDirectory=/home/claude/kraken-bot
+StandardOutput=journal
+StandardError=journal

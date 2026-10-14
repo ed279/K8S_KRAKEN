@@ -1,0 +1,10 @@
+[Unit]
+Description=Kraken Bot v12 Live Loss Analysis
+Requires=kraken-bot-v12-loss-analysis.service
+
+[Timer]
+OnBootSec=30min
+OnUnitActiveSec=12h
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Kraken Bot v12 Strategy Adaptation Service
+PartOf=kraken-bot-v12-strategy-adapt.timer
+
+[Service]
+Type=oneshot
+User=claude
+ExecStart=/usr/bin/python3 -c "from v12.strategy_adaptation_engine import StrategyAdaptationEngine; StrategyAdaptationEngine().run_adaptation_scan()"
+WorkingDirectory=/home/claude/kraken-bot
+StandardOutput=journal
+StandardError=journal

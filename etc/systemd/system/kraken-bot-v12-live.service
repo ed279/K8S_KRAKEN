@@ -1,0 +1,16 @@
+[Unit]
+Description=Kraken Bot v12 Live Trading
+After=network.target
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/home/claude/kraken-bot
+ExecStart=/usr/bin/python3 /home/claude/kraken-bot/v12/kraken_bot_v12.py --tier live --instance-id live-1 --mode trading
+Restart=on-failure
+RestartSec=60
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

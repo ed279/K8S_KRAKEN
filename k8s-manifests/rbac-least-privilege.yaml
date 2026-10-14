@@ -1,0 +1,293 @@
+---
+# Ethics Gate Service Account & RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ethics-gate-sa
+  namespace: cephalobot
+  labels:
+    app: ethics-gate
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ethics-gate-role
+  namespace: cephalobot
+rules:
+# Read config for service discovery
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+  resourceNames: ["ethics-gate-config"]
+# Read own pod identity (for logging)
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get"]
+  resourceNames: [""] # Allows read of own pod
+# Read Vault token secret (injected as volume mount)
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+  resourceNames: ["cephalobot-vault-token"]
+# Read Redis credentials
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+  resourceNames: ["redis-secret"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ethics-gate-rb
+  namespace: cephalobot
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ethics-gate-role
+subjects:
+- kind: ServiceAccount
+  name: ethics-gate-sa
+  namespace: cephalobot
+
+---
+# Tesseract Router Service Account & RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: router-sa
+  namespace: cephalobot
+  labels:
+    app: router
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: router-role
+  namespace: cephalobot
+rules:
+# Query pod/service endpoints for dynamic routing
+- apiGroups: [""]
+  resources: ["pods", "services"]
+  verbs: ["get", "list", "watch"]
+# Read router config
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["router-config"]
+# Read authentication secrets
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+  resourceNames: ["cephalobot-vault-token", "redis-secret"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: router-rb
+  namespace: cephalobot
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: router-role
+subjects:
+- kind: ServiceAccount
+  name: router-sa
+  namespace: cephalobot
+
+---
+# Kraken Bot Service Account & RBAC (read-only)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kraken-bot-sa
+  namespace: default
+  labels:
+    app: kraken-bot
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kraken-bot-role
+rules:
+# Read own namespace resources
+- apiGroups: [""]
+  resources: ["pods", "services"]
+  verbs: ["get", "list"]
+  namespaceSelector:
+    matchNames:
+    - default
+# Read secrets from default namespace
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+  namespaceSelector:
+    matchNames:
+    - default
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kraken-bot-rb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kraken-bot-role
+subjects:
+- kind: ServiceAccount
+  name: kraken-bot-sa
+  namespace: default
+
+---
+# Health Monitor Service Account & RBAC (read-only cluster-wide)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: health-monitor-sa
+  namespace: default
+  labels:
+    app: health-monitor
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: health-monitor-role
+rules:
+# Read pod/node status (for monitoring)
+- apiGroups: [""]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list", "watch"]
+# Read deployments/statefulsets (for replica status)
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch"]
+# Read service status
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: health-monitor-rb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: health-monitor-role
+subjects:
+- kind: ServiceAccount
+  name: health-monitor-sa
+  namespace: default
+
+---
+# Queue Drain Service Account & RBAC (token budget, pod communication)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: queue-drain-sa
+  namespace: cephalobot
+  labels:
+    app: queue-drain
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: queue-drain-role
+  namespace: cephalobot
+rules:
+# Read queue configuration
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+  resourceNames: ["queue-drain-config"]
+# Read Redis credentials
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+  resourceNames: ["redis-secret", "cephalobot-vault-token"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: queue-drain-rb
+  namespace: cephalobot
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: queue-drain-role
+subjects:
+- kind: ServiceAccount
+  name: queue-drain-sa
+  namespace: cephalobot
+
+---
+# Vault Service Account & RBAC (self-operations only)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-sa
+  namespace: vault
+  labels:
+    app: vault
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vault-role
+  namespace: vault
+rules:
+# Vault operator raft snapshot/restore (disaster recovery)
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create"]
+# Vault pod list (for health checks)
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vault-rb
+  namespace: vault
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: vault-role
+subjects:
+- kind: ServiceAccount
+  name: vault-sa
+  namespace: vault
+
+---
+# Deny All Default Policy (enforce explicit allow-list)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: deny-all
+rules: []
+
+---
+# Bind to all unauthenticated users to enforce RBAC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: deny-all-unauthenticated
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: deny-all
+subjects:
+- kind: Group
+  name: system:unauthenticated

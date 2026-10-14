@@ -1,0 +1,10 @@
+[Unit]
+Description=Kraken Bot v12 Strategy Adaptation Scan
+Requires=kraken-bot-v12-strategy-adapt.service
+
+[Timer]
+OnBootSec=20min
+OnUnitActiveSec=6h
+
+[Install]
+WantedBy=timers.target
