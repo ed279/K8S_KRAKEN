@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: trading-reporter
+  namespace: default
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: trading-reporter
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: trading-reporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: trading-reporter
+subjects:
+- kind: ServiceAccount
+  name: trading-reporter
+  namespace: default
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trading-report-config
+  namespace: default
+data:
+  report_interval: "1800"  # 30 minutes
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: telegram-trading-secret
+  namespace: default
+type: Opaque
+stringData:
+  bot_token: "PLACEHOLDER_TELEGRAM_BOT_TOKEN"
+  chat_id: "8746813544"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trading-report
+  namespace: default
+  labels:
+    app: trading-report
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trading-report
+  template:
+    metadata:
+      labels:
+        app: trading-report
+    spec:
+      serviceAccountName: trading-reporter
+      containers:
+      - name: reporter
+        image: kraken-trading-report:v1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: TELEGRAM_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: telegram-trading-secret
+              key: bot_token
+        - name: TELEGRAM_CHAT_ID
+          valueFrom:
+            secretKeyRef:
+              name: telegram-trading-secret
+              key: chat_id
+        - name: REPORT_INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              name: trading-report-config
+              key: report_interval
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "ps aux | grep -q '[p]ython3 trading-report.py'"
+          initialDelaySeconds: 30
+          periodSeconds: 300
